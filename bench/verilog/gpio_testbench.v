@@ -44,6 +44,9 @@
 // CVS Revision History
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.2  2003/12/17 13:00:14  gorand
+// added ECLK and NEC registers, all tests passed.
+//
 // Revision 1.1  2003/11/30 12:28:19  gorand
 // small "names" modification...
 //
@@ -98,7 +101,12 @@ wire	[gw-1:0]	gpio_in;	// GPIO inputs
 wire  gpio_eclk;	// GPIO external clock
 wire	[gw-1:0]	gpio_out;	// GPIO outputs
 wire	[gw-1:0]	gpio_oen;	// GPIO output enables
-wire [ 3 : 0 ] tag_o ;
+wire  [ 3 : 0] tag_o ;
+
+//
+// description of current test.
+//
+reg   [127:0]  text;
 
 //
 // Instantiation of Clock/Reset Generator
@@ -150,13 +158,18 @@ gpio_top gpio_top(
 	.wb_inta_o(),
 
 	// Auxiliary inputs interface
+`ifdef GPIO_AUX_IMPLEMENT
 	.aux_i(gpio_aux),
+`endif //  GPIO_AUX_IMPLEMENT
 
 	// External GPIO Interface
 	.ext_pad_i(gpio_in),
+
+`ifdef GPIO_CLKPAD
 	.clk_pad_i(gpio_eclk),
+`endif // GPIO_CLKPAD
 	.ext_pad_o(gpio_out),
-	.ext_padoen_o(gpio_oen)
+	.ext_padoe_o(gpio_oen)
 );
 
 //
@@ -169,5 +182,8 @@ gpio_mon gpio_mon(
 	.gpio_out(gpio_out),
 	.gpio_oen(gpio_oen)
 );
+
+initial
+  text = " ";
 
 endmodule

@@ -44,6 +44,9 @@
 // CVS Revision History
 //
 // $Log: not supported by cvs2svn $
+// Revision 1.10  2003/12/17 13:00:14  gorand
+// added ECLK and NEC registers, all tests passed.
+//
 // Revision 1.9  2003/11/30 12:28:19  gorand
 // small "names" modification...
 //
@@ -165,7 +168,9 @@ task setaux;
 input	[31:0] val;
 
 begin
+`ifdef GPIO_RGPIO_AUX
 	#100 gpio_testbench.wb_master.wr(`GPIO_RGPIO_AUX<<sh_addr, val, 4'b1111);
+`endif //  GPIO_RGPIO_AUX
 end
 
 endtask
@@ -201,7 +206,9 @@ task seteclk;
 input	[31:0] val;
 
 begin
+`ifdef GPIO_RGPIO_ECLK
 	#100 gpio_testbench.wb_master.wr(`GPIO_RGPIO_ECLK<<sh_addr, val, 4'b1111);
+`endif //  GPIO_RGPIO_ECLK
 end
 
 endtask
@@ -213,7 +220,9 @@ task setnec;
 input	[31:0] val;
 
 begin
+`ifdef GPIO_RGPIO_NEC
 	#100 gpio_testbench.wb_master.wr(`GPIO_RGPIO_NEC<<sh_addr, val, 4'b1111);
+`endif // GPIO_RGPIO_NEC
 end
 
 endtask
@@ -290,8 +299,10 @@ task showaux;
 
 reg	[31:0] tmp;
 begin
+`ifdef GPIO_RGPIO_AUX
 	#100 gpio_testbench.wb_master.rd(`GPIO_RGPIO_AUX<<sh_addr, tmp);
 	$write(" RGPIO_AUX:%h", tmp);
+`endif // GPIO_RGPIO_AUX
 end
 
 endtask
@@ -329,8 +340,10 @@ task showeclk;
 
 reg [31:0] tmp;
 begin
+`ifdef GPIO_RGPIO_ECLK
   #100 gpio_testbench.wb_master.rd(`GPIO_RGPIO_ECLK<<sh_addr, tmp);
   $write(" RGPIO_ECLK:%h", tmp);
+`endif //  GPIO_RGPIO_ECLK
 end
 
 endtask
@@ -342,8 +355,10 @@ task shownec;
 
 reg [31:0] tmp;
 begin
+`ifdef GPIO_RGPIO_NEC
   #100 gpio_testbench.wb_master.rd(`GPIO_RGPIO_NEC<<sh_addr, tmp);
   $write(" RGPIO_NEC:%h", tmp);
+`endif //  GPIO_RGPIO_NEC
 end
 
 endtask
@@ -436,7 +451,9 @@ task getaux;
 output	[31:0]	tmp;
 
 begin
+`ifdef GPIO_RGPIO_AUX
 	#100 gpio_testbench.wb_master.rd(`GPIO_RGPIO_AUX<<sh_addr, tmp);
+`endif //  GPIO_RGPIO_AUX
 end
 
 endtask
@@ -472,7 +489,9 @@ task geteclk;
 output  [31:0]  tmp;
 
 begin
+`ifdef GPIO_RGPIO_ECLK
   #100 gpio_testbench.wb_master.rd(`GPIO_RGPIO_ECLK<<sh_addr, tmp);
+`endif //  GPIO_RGPIO_ECLK
 end
 
 endtask
@@ -484,7 +503,9 @@ task getnec;
 output  [31:0]  tmp;
 
 begin
+`ifdef GPIO_RGPIO_NEC
   #100 gpio_testbench.wb_master.rd(`GPIO_RGPIO_NEC<<sh_addr, tmp);
+`endif //  GPIO_RGPIO_NEC
 end
 
 endtask
@@ -573,6 +594,8 @@ begin
 	gpio_testbench.gpio_mon.set_gpioin(r3);
 
 	// Wait for WB clock
+	@(posedge gpio_testbench.clk);
+	@(posedge gpio_testbench.clk);
 	@(posedge gpio_testbench.clk);
 	@(posedge gpio_testbench.clk);
 
@@ -770,7 +793,7 @@ begin
 		gpio_testbench.gpio_mon.get_gpiooen(l2);
 
 		// Compare gpio_oen and RGPIO_OE. Should be exactly opposite.
-		if (l1 != ~l2)
+		if (l1 != l2)
 			err = err + 1;
 	end
 
@@ -784,7 +807,7 @@ begin
 		failed;
 
 	$write("  Testing auxiliary feature ...");
-
+`ifdef GPIO_AUX_IMPLEMENT
 	//
 	// Phase 7
 	//
@@ -827,6 +850,10 @@ begin
 		$display(" OK");
 	else
 		failed;
+
+`else
+	$display("  Not implemented !!");
+`endif //  GPIO_AUX_IMPLEMENT
 
 end
 endtask
@@ -883,6 +910,8 @@ begin
 		gpio_testbench.gpio_mon.set_gpioin(0);
 
 		// Advance time
+		@(posedge gpio_testbench.clk);
+		@(posedge gpio_testbench.clk);
 		@(posedge gpio_testbench.clk);
 		@(posedge gpio_testbench.clk);
 		@(posedge gpio_testbench.clk);
@@ -979,6 +1008,8 @@ begin
 		@(posedge gpio_testbench.clk);
 		@(posedge gpio_testbench.clk);
 		@(posedge gpio_testbench.clk);
+		@(posedge gpio_testbench.clk);
+		@(posedge gpio_testbench.clk);
 
 		// Sample interrupt request. Should be one.
 		l2 = gpio_testbench.gpio_top.wb_inta_o;
@@ -1038,18 +1069,42 @@ initial begin
 	ints_working = 0;
 	gpio_testbench.gpio_mon.set_gpioin(0);
 	gpio_testbench.gpio_mon.set_gpioaux(0);
-	gpio_testbench.gpio_mon.set_gpioeclk(0);
+  gpio_testbench.gpio_mon.set_gpioeclk(0);
 	$display;
 	$display("###");
 	$display("### GPIO IP Core Verification ###");
 	$display("###");
+
+`ifdef GPIO_IMPLEMENTED
+
 	$display;
 	$display("I. Testing correct operation of RGPIO_CTRL control bits");
 	$display;
 
 
-	$write("  Testing control bit RGPIO_CTRL[ECLK] ...");
 	local_errs = 0;
+#1 
+
+  gpio_testbench.text = "Test INTS"; 
+	test_ints;
+
+	$display;
+	$display("II. Testing modes of operation ...");
+	$display;
+
+  gpio_testbench.text = "Test simple"; 
+	test_simple;
+  gpio_testbench.text = "Test ptrig"; 
+	test_ptrig;
+
+
+	$display;
+	$display("III. Testing registers external clock");
+	$display;
+
+`ifdef GPIO_CLKPAD
+	$write("  Testing control register ECLK ...");
+  gpio_testbench.text = "Test ECLK"; 
 	for (i = 0; i < 10 * `GPIO_VERIF_INTENSITY; i = i + 1)
 		test_eclk;
 	if (local_errs == 0)
@@ -1057,30 +1112,33 @@ initial begin
 	else
 		failed;
 
-
-	$write("  Testing control bit RGPIO_CTRL[NEC] ...");
+	$write("  Testing control register NEC ...");
 	local_errs = 0;
+  gpio_testbench.text = "Test NEC"; 
 	for (i = 0; i < 10 * `GPIO_VERIF_INTENSITY; i = i + 1)
 		test_nec;
 	if (local_errs == 0)
 		$display(" OK");
 	else
 		failed;
-
-	test_ints;
-
-	$display;
-	$display("II. Testing modes of operation ...");
-	$display;
-
-	test_simple;
-	test_ptrig;
+`else
+	$display("  External clock not enabled!!");
+`endif // GPIO_CLKPAD
 
 	$display;
 	$display("###");
 	$display("### FAILED TESTS: %d ###", nr_failed);
 	$display("###");
 	$display;
+
+`else
+
+	$display("###");
+	$display("### GPIO not implemented ");
+	$display("###");
+  nr_failed = 1;
+
+`endif //  GPIO_IMPLEMENTED
 //	$finish;
   if ( nr_failed == 0 )
     begin
